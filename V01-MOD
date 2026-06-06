@@ -1,0 +1,94 @@
+#!/bin/sh
+
+# GR3YOS Package Tool - gr3ypkg
+
+CMD="$1"
+NAME="$2"
+SRC="$3"
+
+PKG_DIR="$HOME/.gr3ypkg"
+
+# Create package directory if it doesn't exist
+mkdir -p "$PKG_DIR"
+
+case "$CMD" in
+    get)
+        if [ -z "$NAME" ] || [ -z "$SRC" ]; then
+            echo "Usage: gr3ypkg get [name] [url]"
+            exit 1
+        fi
+
+        echo "[GR3YPKG] Downloading $NAME..."
+
+        # Check if the source is a compressed package pack
+        case "$SRC" in
+            *.tar.gz)
+                # Create a dedicated directory for this pack to avoid clutter
+                TARGET_DIR="$PKG_DIR/$NAME"
+                mkdir -p "$TARGET_DIR"
+                
+                # Download and pipe directly to tar for extraction
+                curl -L "$SRC" | tar -xzC "$TARGET_DIR"
+                
+                # Make everything inside executable (or target specific binaries)
+                chmod -R +x "$TARGET_DIR"
+                echo "[GR3YPKG] Extracted package pack to $TARGET_DIR"
+                ;;
+            *)
+                # Original single-binary behavior
+                FILE="$PKG_DIR/$NAME"
+                curl -L "$SRC" -o "$FILE"
+                chmod +x "$FILE"
+                echo "[GR3YPKG] Installed $NAME to $FILE"
+                ;;
+        esac
+        ;;
+
+    run)
+        if [ -z "$NAME" ]; then
+            echo "Usage: gr3ypkg run [name]"
+            exit 1
+        fi
+
+        FILE="$PKG_DIR/$NAME"
+
+        # If it's a package pack directory, look for a binary matching the folder name inside it
+        if [ -d "$FILE" ]; then
+            if [ -f "$FILE/$NAME" ]; then
+                "$FILE/$NAME"
+            else
+                echo "Pack directory found, but launcher binary '$FILE/$NAME' not found."
+                exit 1
+            fi
+        elif [ -f "$FILE" ]; then
+            "$FILE"
+        else
+            echo "Package not found: $NAME"
+            exit 1
+        fi
+        ;;
+
+    list)
+        echo "Installed packages and packs:"
+        ls "$PKG_DIR"
+        ;;
+
+    remove)
+        if [ -z "$NAME" ]; then
+            echo "Usage: gr3ypkg remove [name]"
+            exit 1
+        fi
+
+        # Safely removes either the single binary file OR the package pack folder
+        rm -rf "$PKG_DIR/$NAME"
+        echo "Removed $NAME"
+        ;;
+
+    *)
+        echo "gr3ypkg commands:"
+        echo "  get [name] [url]"
+        echo "  run [name]"
+        echo "  list"
+        echo "  remove [name]"
+        ;;
+esac
