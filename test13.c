@@ -1,5 +1,5 @@
 //gr3ypkg, gr3yos "package manager"
-
+//this version removes bin/sh
 CMD="$1"
 NAME="$2"
 SRC="$3"
